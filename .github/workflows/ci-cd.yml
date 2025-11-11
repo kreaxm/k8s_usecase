@@ -50,12 +50,19 @@ jobs:
           docker build -t ${{ secrets.DOCKER_USERNAME }}/flask-eval:latest .
           docker push ${{ secrets.DOCKER_USERNAME }}/flask-eval:latest
 
+      # Step 1: Login to Azure using the service principal JSON
+      - name: Azure Login
+        uses: azure/login@v2
+        with:
+          creds: ${{ secrets.AZURE_CREDS }}
+
+# Step 2: Set AKS context
       - name: Set AKS context
         uses: azure/aks-set-context@v3
         with:
-          creds: ${{ secrets.AZURE_CREDS }}
           resource-group: myResourceGroup
           cluster-name: myAKSClusterSmallNew
+
 
       - name: Deploy to AKS
         run: |
