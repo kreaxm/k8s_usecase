@@ -1,0 +1,26 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: flask-k8s-eval
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: flask-k8s-eval
+  template:
+    metadata:
+      labels:
+        app: flask-k8s-eval
+    spec:
+      containers:
+      - name: flask-container
+        image: mycontainerregistrysmall.azurecr.io/flask-eval:debug
+        ports:
+        - containerPort: 8080
+        resources:
+          limits:
+            cpu: "500m"
+            memory: "256Mi"
+          requests:
+            cpu: "200m"
+            memory: "128Mi"
