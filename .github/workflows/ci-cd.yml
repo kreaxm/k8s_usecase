@@ -30,6 +30,10 @@ jobs:
         run: |
           pip install pytest
           pytest || true
+          
+      - name: Run tests
+        run: pytest --maxfail=1 --disable-warnings -q --cov=. --cov-report=xml
+
 
       - name: SonarCloud Scan
         uses: SonarSource/sonarqube-scan-action@v5.0.0
@@ -39,7 +43,8 @@ jobs:
           args: >
             -Dsonar.projectKey=${{ secrets.SONAR_PROJECT_KEY }}
             -Dsonar.organization=${{ secrets.SONAR_ORGANIZATION }}
-            -Dsonar.python.version=3.9
+            -Dsonar.python.coverage.reportPaths=coverage.xml
+
 
 
       - name: Log in to Docker Hub
