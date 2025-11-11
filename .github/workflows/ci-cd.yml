@@ -8,7 +8,7 @@ on:
 env:
   ACR_NAME: mycontainerregistrysmall      # your Azure Container Registry name (without .azurecr.io)
   IMAGE_NAME: flask-eval
-  AKS_CLUSTER_NAME: myAKSClusterSmall     # your AKS cluster name
+  AKS_CLUSTER_NAME: myAKSClusterSmallNew     # your AKS cluster name
   AKS_RESOURCE_GROUP: myResourceGroup     # your AKS resource group
 
 jobs:
