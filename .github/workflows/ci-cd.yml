@@ -1,56 +1,59 @@
-name: Build, Push to ACR, and Deploy to AKS
+name: CI/CD Pipeline for Flask App
 
 on:
   push:
     branches:
       - main
 
-env:
-  ACR_NAME: mycontainerregistrysmall          # ACR name (no .azurecr.io)
-  IMAGE_NAME: flask-eval
-  AKS_CLUSTER_NAME: myAKSClusterSmallNew      # your AKS cluster
-  AKS_RESOURCE_GROUP: myResourceGroup         # resource group
-
 jobs:
-  build-and-deploy:
+  build-test-deploy:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout repository
+      - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Log in to Azure
-        uses: azure/login@v1
+      - name: Set up Python
+        uses: actions/setup-python@v5
         with:
-          creds: ${{ secrets.AZURE_CREDS }}
+          python-version: "3.9"
 
-      - name: Log in to ACR
-        run: |
-          az acr login --name $ACR_NAME
+      - name: Install dependencies
+        run: pip install -r requirements.txt
 
-      - name: Build and push Docker image to ACR
+      - name: Lint Python code
         run: |
-          IMAGE_TAG=${{ github.run_number }}
-          docker build -t $ACR_NAME.azurecr.io/$IMAGE_NAME:$IMAGE_TAG .
-          docker push $ACR_NAME.azurecr.io/$IMAGE_NAME:$IMAGE_TAG
-          echo "IMAGE=$ACR_NAME.azurecr.io/$IMAGE_NAME:$IMAGE_TAG" >> $GITHUB_ENV
+          pip install flake8
+          flake8 . || true
+
+      - name: Run unit tests
+        run: |
+          pip install pytest
+          pytest || true
+
+      - name: SonarCloud Scan
+        uses: SonarSource/sonarcloud-github-action@master
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+          SONAR_PROJECT_KEY: ${{ secrets.SONAR_PROJECT_KEY }}
+          SONAR_ORGANIZATION: ${{ secrets.SONAR_ORGANIZATION }}
+
+      - name: Log in to Docker Hub
+        run: echo ${{ secrets.DOCKER_PASSWORD }} | docker login -u ${{ secrets.DOCKER_USERNAME }} --password-stdin
+
+      - name: Build and Push Docker image
+        run: |
+          docker build -t ${{ secrets.DOCKER_USERNAME }}/flask-eval:latest .
+          docker push ${{ secrets.DOCKER_USERNAME }}/flask-eval:latest
 
       - name: Set AKS context
-        run: |
-          az login --service-principal \
-            -u ${{ fromJson(secrets.AZURE_CREDS).clientId }} \
-            -p ${{ fromJson(secrets.AZURE_CREDS).clientSecret }} \
-            --tenant ${{ fromJson(secrets.AZURE_CREDS).tenantId }}
-          az aks get-credentials \
-            --resource-group ${{ env.AKS_RESOURCE_GROUP }} \
-            --name ${{ env.AKS_CLUSTER_NAME }} \
-            --overwrite-existing
+        uses: azure/aks-set-context@v3
+        with:
+          creds: ${{ secrets.AZURE_CREDS }}
+          resource-group: myResourceGroup
+          cluster-name: myAKSClusterSmallNew
 
       - name: Deploy to AKS
-        uses: Azure/k8s-deploy@v5
-        with:
-          manifests: |
-            manifests/deployment.yaml
-            manifests/service.yaml
-          images: |
-            ${{ env.IMAGE }}
+        run: |
+          kubectl apply -f manifests/deployment.yaml
+          kubectl apply -f manifests/service.yaml
