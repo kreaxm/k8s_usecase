@@ -16,7 +16,7 @@ spec:
       - name: flask-container
         image: mycontainerregistrysmall.azurecr.io/flask-eval:debug
         ports:
-        - containerPort: 8080
+        - containerPort: 5000
         resources:
           limits:
             cpu: "500m"
