@@ -6,10 +6,10 @@ on:
       - main
 
 env:
-  ACR_NAME: mycontainerregistrysmall      # your Azure Container Registry name (without .azurecr.io)
+  ACR_NAME: mycontainerregistrysmall          # ACR name (no .azurecr.io)
   IMAGE_NAME: flask-eval
-  AKS_CLUSTER_NAME: myAKSClusterSmallNew     # your AKS cluster name
-  AKS_RESOURCE_GROUP: myResourceGroup     # your AKS resource group
+  AKS_CLUSTER_NAME: myAKSClusterSmallNew      # your AKS cluster
+  AKS_RESOURCE_GROUP: myResourceGroup         # resource group
 
 jobs:
   build-and-deploy:
@@ -24,7 +24,7 @@ jobs:
         with:
           creds: ${{ secrets.AZURE_CREDS }}
 
-      - name: Set up Docker login to ACR
+      - name: Log in to ACR
         run: |
           az acr login --name $ACR_NAME
 
@@ -36,18 +36,21 @@ jobs:
           echo "IMAGE=$ACR_NAME.azurecr.io/$IMAGE_NAME:$IMAGE_TAG" >> $GITHUB_ENV
 
       - name: Set AKS context
-        uses: azure/aks-set-context@v3
-        with:
-          creds: ${{ secrets.AZURE_CREDS }}
-          cluster-name: ${{ env.AKS_CLUSTER_NAME }}
-          resource-group: ${{ env.AKS_RESOURCE_GROUP }}
+        run: |
+          az login --service-principal \
+            -u ${{ fromJson(secrets.AZURE_CREDS).clientId }} \
+            -p ${{ fromJson(secrets.AZURE_CREDS).clientSecret }} \
+            --tenant ${{ fromJson(secrets.AZURE_CREDS).tenantId }}
+          az aks get-credentials \
+            --resource-group ${{ env.AKS_RESOURCE_GROUP }} \
+            --name ${{ env.AKS_CLUSTER_NAME }} \
+            --overwrite-existing
 
       - name: Deploy to AKS
-       uses: Azure/k8s-deploy@v5
+        uses: Azure/k8s-deploy@v5
         with:
           manifests: |
             manifests/deployment.yaml
             manifests/service.yaml
           images: |
             ${{ env.IMAGE }}
-
