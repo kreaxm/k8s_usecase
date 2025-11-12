@@ -46,15 +46,35 @@ jobs:
       - name: Build source artifact
         run: |
           mkdir -p build_artifacts
-          zip -r build_artifacts/flask_app_${GITHUB_RUN_NUMBER}.zip . \
+          zip -r build_artifacts/flask_app_$GITHUB_RUN_NUMBER.zip . \
             -x "*.git*" "__pycache__/*" "*.pytest_cache*" "*.venv*" "*.DS_Store"
       
       - name: Upload source artifact
         uses: actions/upload-artifact@v4
         with:
           name: flask_app_source
-          path: build_artifacts/flask_app_${GITHUB_RUN_NUMBER}.zip
-
+          path: build_artifacts/flask_app_$GITHUB_RUN_NUMBER.zip
 
       - name: Log in to Docker Hub
-        run: echo ${{ secrets.DOCKER_PASSWORD }} | docker login -u ${{ secret_
+        run: echo ${{ secrets.DOCKER_PASSWORD }} | docker login -u ${{ secrets.DOCKER_USERNAME }} --password-stdin
+
+      - name: Build and Push Docker image
+        run: |
+          docker build -t ${{ secrets.DOCKER_USERNAME }}/flask-eval:latest .
+          docker push ${{ secrets.DOCKER_USERNAME }}/flask-eval:latest
+
+      - name: Azure Login
+        uses: azure/login@v2
+        with:
+          creds: ${{ secrets.AZURE_CREDS }}
+
+      - name: Set AKS context
+        uses: azure/aks-set-context@v3
+        with:
+          resource-group: myResourceGroup
+          cluster-name: myAKSClusterSmallNew
+
+      - name: Deploy to AKS
+        run: |
+          kubectl apply -f manifests/deployment.yaml
+          kubectl apply -f manifests/service.yaml
