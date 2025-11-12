@@ -46,14 +46,15 @@ jobs:
       - name: Build source artifact
         run: |
           mkdir -p build_artifacts
-          zip -r build_artifacts/flask_app_${{ github.run_number }}.zip . \
+          zip -r build_artifacts/flask_app_${GITHUB_RUN_NUMBER}.zip . \
             -x "*.git*" "__pycache__/*" "*.pytest_cache*" "*.venv*" "*.DS_Store"
       
       - name: Upload source artifact
         uses: actions/upload-artifact@v4
         with:
           name: flask_app_source
-          path: build_artifacts/flask_app_${{ github.run_number }}.zip
+          path: build_artifacts/flask_app_${GITHUB_RUN_NUMBER}.zip
+
 
       - name: Log in to Docker Hub
         run: echo ${{ secrets.DOCKER_PASSWORD }} | docker login -u ${{ secret_
