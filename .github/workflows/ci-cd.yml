@@ -20,25 +20,17 @@ jobs:
 
       - name: Install dependencies
         run: pip install -r requirements.txt
-        
-      - name: Run tests
+
+      - name: Run tests with coverage
         run: |
           mkdir -p tests
+          pip install pytest pytest-cov
           pytest --maxfail=1 --disable-warnings -q --cov=. --cov-report=xml
 
       - name: Lint Python code
         run: |
           pip install flake8
           flake8 . || true
-
-      - name: Run unit tests
-        run: |
-          pip install pytest
-          pytest || true
-          
-      - name: Run tests
-        run: pytest --maxfail=1 --disable-warnings -q --cov=. --cov-report=xml
-
 
       - name: SonarCloud Scan
         uses: SonarSource/sonarqube-scan-action@v5.0.0
@@ -50,31 +42,18 @@ jobs:
             -Dsonar.organization=${{ secrets.SONAR_ORGANIZATION }}
             -Dsonar.python.coverage.reportPaths=coverage.xml
 
-
+      # 🧱 Build & upload source artifact
+      - name: Build source artifact
+        run: |
+          mkdir -p build_artifacts
+          zip -r build_artifacts/flask_app_${{ github.run_number }}.zip . \
+            -x "*.git*" "__pycache__/*" "*.pytest_cache*" "*.venv*" "*.DS_Store"
+      
+      - name: Upload source artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: flask_app_source
+          path: build_artifacts/flask_app_${{ github.run_number }}.zip
 
       - name: Log in to Docker Hub
-        run: echo ${{ secrets.DOCKER_PASSWORD }} | docker login -u ${{ secrets.DOCKER_USERNAME }} --password-stdin
-
-      - name: Build and Push Docker image
-        run: |
-          docker build -t ${{ secrets.DOCKER_USERNAME }}/flask-eval:latest .
-          docker push ${{ secrets.DOCKER_USERNAME }}/flask-eval:latest
-
-      # Step 1: Login to Azure using the service principal JSON
-      - name: Azure Login
-        uses: azure/login@v2
-        with:
-          creds: ${{ secrets.AZURE_CREDS }}
-
-# Step 2: Set AKS context
-      - name: Set AKS context
-        uses: azure/aks-set-context@v3
-        with:
-          resource-group: myResourceGroup
-          cluster-name: myAKSClusterSmallNew
-
-
-      - name: Deploy to AKS
-        run: |
-          kubectl apply -f manifests/deployment.yaml
-          kubectl apply -f manifests/service.yaml
+        run: echo ${{ secrets.DOCKER_PASSWORD }} | docker login -u ${{ secret_
