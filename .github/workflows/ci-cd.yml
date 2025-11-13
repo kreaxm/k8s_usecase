@@ -10,27 +10,27 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      # 🧾 Step 1: Checkout code
+      
       - name: Checkout code
         uses: actions/checkout@v4
 
-      # 🐍 Step 2: Set up Python
+      
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
           python-version: "3.9"
 
-      # 📦 Step 3: Install dependencies
+      
       - name: Install dependencies
         run: pip install -r requirements.txt
 
-      # 🧪 Step 4: Run tests with coverage
+     
       - name: Run tests with coverage
         run: |
           pip install pytest pytest-cov
           pytest --maxfail=1 --disable-warnings --cov=. --cov-report=xml:coverage.xml
 
-      # 🌊 Step 5: SonarCloud Analysis
+     
       - name: SonarCloud Scan
         uses: SonarSource/sonarqube-scan-action@v5.0.0
         env:
@@ -42,44 +42,44 @@ jobs:
             -Dsonar.sources=.
             -Dsonar.python.coverage.reportPaths=coverage.xml
 
-      # 🧱 Step 6: Build source artifact
+    
       - name: Build source artifact
         run: |
           mkdir -p build_artifacts
           zip -r build_artifacts/flask_app_${{ github.run_number }}.zip . \
             -x "*.git*" "__pycache__/*" "*.pytest_cache*" "*.venv*" "*.DS_Store"
 
-      # ☁️ Step 7: Upload artifact to GitHub
+     
       - name: Upload source artifact
         uses: actions/upload-artifact@v4
         with:
           name: flask_app_source_${{ github.run_number }}
           path: build_artifacts/flask_app_${{ github.run_number }}.zip
 
-      # 🐳 Step 8: Log in to Docker Hub
+     
       - name: Log in to Docker Hub
         run: echo ${{ secrets.DOCKER_PASSWORD }} | docker login -u ${{ secrets.DOCKER_USERNAME }} --password-stdin
 
-      # 🏗 Step 9: Build and Push Docker image
+      
       - name: Build and Push Docker image
         run: |
           docker build -t ${{ secrets.DOCKER_USERNAME }}/flask-eval:latest .
           docker push ${{ secrets.DOCKER_USERNAME }}/flask-eval:latest
 
-      # 🔑 Step 10: Azure Login
+     
       - name: Azure Login
         uses: azure/login@v2
         with:
           creds: ${{ secrets.AZURE_CREDS }}
 
-      # ☸️ Step 11: Set AKS context
+     
       - name: Set AKS context
         uses: azure/aks-set-context@v3
         with:
           resource-group: myResourceGroup
           cluster-name: myAKSClusterSmallNew
 
-      # 🚀 Step 12: Deploy to AKS
+     
       - name: Deploy to AKS
         run: |
           kubectl apply -f manifests/deployment.yaml
